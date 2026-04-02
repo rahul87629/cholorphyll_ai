@@ -4,6 +4,7 @@ app.py — LeafSense v6
 ✓ No keyboard_double_arrow text — hidden with CSS
 ✓ Creative farmer content, rich imagery, professional UI
 ✓ Light / Dark mode
+✓ Sidebar permanently open — no collapse button
 """
 
 import streamlit as st
@@ -22,59 +23,76 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Header cleanup + << >> buttons + force sidebar open ──────────────────────
+# ── Permanently fix sidebar: hide collapse button, remove keyboard_double_arrow ──
 st.markdown("""
+<style>
+/* Hide ALL sidebar collapse/expand toggle buttons */
+section[data-testid="stSidebar"] button[data-testid="baseButton-headerNoPadding"],
+section[data-testid="stSidebar"] button[data-testid="baseButton-header"],
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"],
+button[kind="header"] {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+}
+
+/* Remove the black header bar */
+header[data-testid="stHeader"],
+div[data-testid="stToolbar"],
+div[data-testid="stDecoration"],
+div[data-testid="stStatusWidget"] {
+    display: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Force sidebar always open */
+section[data-testid="stSidebar"] {
+    transform: none !important;
+    min-width: 240px !important;
+    width: 240px !important;
+    left: 0 !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+section[data-testid="stSidebar"][aria-expanded="false"] {
+    transform: none !important;
+    width: 240px !important;
+    min-width: 240px !important;
+}
+</style>
+
 <script>
 (function(){
-    function fixUI(){
-        // 1. Remove black header bar
-        ['header[data-testid="stHeader"]',
-         '[data-testid="stToolbar"]',
-         '[data-testid="stDecoration"]',
-         '[data-testid="stStatusWidget"]'
-        ].forEach(function(s){
-            document.querySelectorAll(s).forEach(function(el){
-                el.style.cssText='display:none!important;height:0!important;overflow:hidden!important';
+    function fixSidebar(){
+        // Force sidebar open
+        var sidebar = document.querySelector('section[data-testid="stSidebar"]');
+        if(sidebar){
+            sidebar.style.cssText += ';transform:none!important;width:240px!important;min-width:240px!important;display:block!important;visibility:visible!important;opacity:1!important;';
+            sidebar.setAttribute('aria-expanded','true');
+        }
+        // Hide any button containing "keyboard" text
+        document.querySelectorAll('button').forEach(function(btn){
+            var txt = btn.innerText || '';
+            if(txt.trim().toLowerCase().startsWith('keyboard')){
+                btn.style.cssText = 'display:none!important;width:0!important;height:0!important;overflow:hidden!important;';
+            }
+        });
+        // Also hide collapsed control element
+        ['[data-testid="stSidebarCollapsedControl"]','[data-testid="collapsedControl"]'].forEach(function(sel){
+            document.querySelectorAll(sel).forEach(function(el){
+                el.style.cssText='display:none!important;width:0!important;height:0!important;overflow:hidden!important;';
             });
         });
-
-        // 2. If sidebar is collapsed, auto-click the open button
-        var sidebar = document.querySelector('section[data-testid="stSidebar"]');
-        if(sidebar && (sidebar.getAttribute('aria-expanded')==='false' || getComputedStyle(sidebar).width==='0px')){
-            var openBtn = document.querySelector('[data-testid="stSidebarCollapsedControl"] button, [data-testid="collapsedControl"] button');
-            if(openBtn){ openBtn.click(); return; }
-        }
-
-        // 3. Replace "keyboard_double_arrow_left" text with << inside sidebar
-        document.querySelectorAll('section[data-testid="stSidebar"] button span, section[data-testid="stSidebar"] button p').forEach(function(sp){
-            if(sp.innerText && sp.innerText.trim().startsWith('keyboard')){
-                sp.innerText = '<<';
-                sp.style.cssText='font-family:monospace!important;font-size:14px!important;font-weight:900!important;color:#c8f088!important;letter-spacing:-2px!important;line-height:1!important';
-            }
-        });
-
-        // 4. Replace "keyboard_double_arrow_right" text with >> outside sidebar (collapsed control)
-        document.querySelectorAll('[data-testid="stSidebarCollapsedControl"] button span, [data-testid="collapsedControl"] button span').forEach(function(sp){
-            if(sp.innerText && sp.innerText.trim().startsWith('keyboard')){
-                sp.innerText = '>>';
-                sp.style.cssText='font-family:monospace!important;font-size:14px!important;font-weight:900!important;color:#ffffff!important;letter-spacing:-2px!important;line-height:1!important';
-            }
-        });
-
-        // 5. Style the << button inside sidebar
-        document.querySelectorAll('section[data-testid="stSidebar"] button[data-testid="baseButton-headerNoPadding"], section[data-testid="stSidebar"] button[data-testid="baseButton-header"]').forEach(function(btn){
-            btn.style.cssText='background:rgba(255,255,255,0.15)!important;border:1px solid rgba(200,240,130,0.5)!important;border-radius:8px!important;padding:2px 8px!important;cursor:pointer!important;min-width:36px!important;';
-        });
-
-        // 6. Style the >> button outside sidebar
-        document.querySelectorAll('[data-testid="stSidebarCollapsedControl"] button, [data-testid="collapsedControl"] button').forEach(function(btn){
-            btn.style.cssText='background:#2a5a1e!important;border:1px solid #5aaa30!important;border-radius:8px!important;padding:2px 8px!important;cursor:pointer!important;min-width:36px!important;box-shadow:0 2px 8px rgba(42,90,30,0.4)!important;';
-        });
     }
-
-    fixUI();
-    new MutationObserver(fixUI).observe(document.body, {childList:true, subtree:true, characterData:true});
-    [100,300,700,1200,2500,5000].forEach(function(t){ setTimeout(fixUI,t); });
+    fixSidebar();
+    new MutationObserver(fixSidebar).observe(document.body,{childList:true,subtree:true,characterData:true});
+    [100,300,600,1000,2000,4000].forEach(function(t){ setTimeout(fixSidebar,t); });
 })();
 </script>
 """, unsafe_allow_html=True)
@@ -417,14 +435,6 @@ st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* ── Remove black top header bar ── */
-header[data-testid="stHeader"],
-div[data-testid="stToolbar"],
-div[data-testid="stDecoration"],
-div[data-testid="stStatusWidget"] {{
-    display:none !important; height:0 !important; overflow:hidden !important;
-}}
-
 html,body,.stApp {{ background:{BG} !important; font-family:'Inter',sans-serif; }}
 .block-container {{ padding:0 2rem 4rem !important; max-width:1380px !important; margin-top:0 !important; }}
 #MainMenu,footer {{ visibility:hidden; }}
@@ -510,11 +520,9 @@ section[data-testid="stSidebar"] [data-testid="stSelectbox"] span {{ color:#d8f0
 .fim:hover {{ transform:scale(1.02); box-shadow:0 10px 28px rgba(0,0,0,0.2); }}
 .fim-cap {{ position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent,rgba(0,0,0,0.72)); padding:18px 14px 11px; color:#fff !important; font-size:0.82rem; font-weight:500; }}
 
-/* Quote card */
 .quote-card {{ background:linear-gradient(135deg,{"#0d2a10" if dark else "#e8f5dc"},{"#1a4a1a" if dark else "#d0ecc0"}); border:1px solid {"#2a5a2a" if dark else "#a0d080"}; border-radius:14px; padding:20px 24px; margin:10px 0; border-left:4px solid {GA}; }}
 .quote-text {{ font-family:'Merriweather',serif; font-style:italic; font-size:0.95rem; color:{TS} !important; line-height:1.7; }}
 
-/* Did you know */
 .dyk {{ background:{"#0a1e0a" if dark else "#f0f8e8"}; border:1px solid {CBR}; border-radius:12px; padding:14px 18px; margin:8px 0; display:flex; align-items:flex-start; gap:12px; }}
 .dyk-icon {{ font-size:1.4rem; flex-shrink:0; margin-top:2px; }}
 .dyk-text {{ color:{TS} !important; font-size:0.87rem; line-height:1.6; }}
@@ -588,7 +596,6 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(f"**{T['settings']}**")
 
-    # Language selector
     lang_choice = st.selectbox(T["language"], options=list(LANG.keys()),
                                 index=list(LANG.keys()).index(st.session_state.language),
                                 label_visibility="visible")
@@ -616,7 +623,7 @@ with st.sidebar:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PREDICT
+# PREDICT PAGE
 # ══════════════════════════════════════════════════════════════════════════════
 if page == T["nav_predict"]:
     st.markdown(f"""<div class="page-hero">
@@ -648,7 +655,6 @@ if page == T["nav_predict"]:
                 f'<div class="sec-tag">PRECISION AGRICULTURE</div>'
                 f'<p style="color:{TS};font-size:.84rem;margin:8px 0 0">Commercial SPAD-502 accuracy at a fraction of the cost — accessible to every farmer.</p></div>', unsafe_allow_html=True)
 
-            # Did you know
             st.markdown(f'<div class="sec-head" style="font-size:1rem">💡 Did You Know?</div>', unsafe_allow_html=True)
             for fact in T["did_you_know"]:
                 st.markdown(f'<div class="dyk"><div class="dyk-icon">🌱</div><div class="dyk-text">{fact}</div></div>', unsafe_allow_html=True)
@@ -719,7 +725,6 @@ if page == T["nav_predict"]:
                 else:
                     st.markdown(f'<div class="ha-m"><strong>Auto-save OFF</strong><p>Toggle in sidebar to enable.</p></div>', unsafe_allow_html=True)
         else:
-            # Farmer quotes
             st.markdown(f'<div class="sec-head">🌾 Farmer Wisdom</div>', unsafe_allow_html=True)
             for q in T["farmer_quotes"]:
                 st.markdown(f'<div class="quote-card"><div class="quote-text">{q}</div></div>', unsafe_allow_html=True)
@@ -733,7 +738,7 @@ if page == T["nav_predict"]:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# DATASET
+# DATASET PAGE
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == T["nav_dataset"]:
     st.markdown(f"""<div class="page-hero"><div>
@@ -773,7 +778,7 @@ elif page == T["nav_dataset"]:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SPAD GUIDE
+# SPAD GUIDE PAGE
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == T["nav_guide"]:
     st.markdown(f"""<div class="page-hero"><div>
@@ -781,7 +786,6 @@ elif page == T["nav_guide"]:
         <div class="hero-sub">{T['guide_sub']}</div>
     </div></div>""", unsafe_allow_html=True)
 
-    # 4 farmer images
     ci1,ci2,ci3,ci4 = st.columns(4)
     for col,url,cap in zip([ci1,ci2,ci3,ci4],
         ["https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=500&q=70",
@@ -821,7 +825,6 @@ elif page == T["nav_guide"]:
         <p style="color:{'#e0c060' if dark else '#6d4c00'};margin-top:10px;font-size:.89rem;line-height:1.9">{tips_w}</p></div>""", unsafe_allow_html=True)
 
     hdiv()
-    # Farmer quotes section
     st.markdown(f'<div class="sec-head">🌾 Farmer Wisdom</div>', unsafe_allow_html=True)
     qc1,qc2,qc3 = st.columns(3)
     for col,q in zip([qc1,qc2,qc3],T["farmer_quotes"]):
@@ -841,7 +844,7 @@ elif page == T["nav_guide"]:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ABOUT
+# ABOUT PAGE
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == T["nav_about"]:
     st.markdown(f"""<div class="page-hero"><div>
@@ -872,7 +875,6 @@ elif page == T["nav_about"]:
             st.markdown(tip_card(val,lbl,tip), unsafe_allow_html=True)
 
     hdiv()
-    # Impact section
     st.markdown(f'<div class="sec-head">🌍 Project Impact</div>', unsafe_allow_html=True)
     imp1,imp2,imp3 = st.columns(3)
     for col,icon,title,desc in zip([imp1,imp2,imp3],
