@@ -22,6 +22,31 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# ── Kill keyboard_double_arrow + black header bar via JS MutationObserver ──
+st.markdown("""
+<script>
+(function(){
+    function nuke(){
+        var sel=[
+            'header[data-testid="stHeader"]',
+            '[data-testid="stToolbar"]',
+            '[data-testid="stDecoration"]',
+            'button[data-testid="baseButton-headerNoPadding"]',
+            'button[data-testid="baseButton-header"]',
+            '[data-testid="collapsedControl"]',
+            '[data-testid="stSidebarCollapsedControl"]'
+        ];
+        sel.forEach(function(s){
+            document.querySelectorAll(s).forEach(function(el){ el.style.display='none'; el.style.height='0'; });
+        });
+    }
+    nuke();
+    new MutationObserver(nuke).observe(document.body,{childList:true,subtree:true});
+    [200,500,1000,2000].forEach(function(t){ setTimeout(nuke,t); });
+})();
+</script>
+""", unsafe_allow_html=True)
+
 # ══════════════════════════════════════════════════════════════════════════════
 # TRANSLATIONS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -360,19 +385,39 @@ st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* ── Kill the keyboard_double_arrow text ── */
+/* ── Kill keyboard_double_arrow button + all text inside it ── */
 button[data-testid="baseButton-headerNoPadding"],
 button[data-testid="baseButton-header"],
 [data-testid="collapsedControl"],
 button[kind="header"],
 .st-emotion-cache-dvne4q,
 .st-emotion-cache-1rtdyuf,
+.st-emotion-cache-1mi2oo5,
+.st-emotion-cache-pkbazv,
 [aria-label="Close sidebar"],
-[aria-label="Open sidebar"] {{ display:none !important; }}
+[aria-label="Open sidebar"],
+[data-testid="stSidebarCollapsedControl"],
+div[data-testid="stSidebarCollapsedControl"],
+header[data-testid="stHeader"],
+header {{ display:none !important; visibility:hidden !important; height:0 !important; overflow:hidden !important; }}
+
+/* ── Remove the black top toolbar entirely ── */
+.stApp > header,
+div[data-testid="stToolbar"],
+div[data-testid="stDecoration"],
+div[data-testid="stStatusWidget"],
+#stDecoration,
+.reportview-container .main .block-container .stToolbar,
+[data-testid="stAppViewBlockContainer"] > div:first-child {{ display:none !important; height:0 !important; }}
+
+/* Force icon font NOT to render as text — hide the element's text content */
+button[data-testid="baseButton-headerNoPadding"]::before,
+button[data-testid="baseButton-headerNoPadding"]::after {{ content:'' !important; }}
 
 html,body,.stApp {{ background:{BG} !important; font-family:'Inter',sans-serif; }}
-.block-container {{ padding:0 2rem 4rem !important; max-width:1380px !important; }}
+.block-container {{ padding:0 2rem 4rem !important; max-width:1380px !important; margin-top:0 !important; }}
 #MainMenu,footer {{ visibility:hidden; }}
+.stAppViewContainer {{ margin-top:0 !important; padding-top:0 !important; }}
 
 p,span,div,label,li {{ color:{TP} !important; font-family:'Inter',sans-serif !important; }}
 h1,h2,h3,h4 {{ font-family:'Merriweather',serif !important; color:{TP} !important; }}
