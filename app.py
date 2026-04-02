@@ -22,27 +22,59 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Kill keyboard_double_arrow + black header bar via JS MutationObserver ──
+# ── Header cleanup + << >> buttons + force sidebar open ──────────────────────
 st.markdown("""
 <script>
 (function(){
-    function nuke(){
-        var sel=[
-            'header[data-testid="stHeader"]',
-            '[data-testid="stToolbar"]',
-            '[data-testid="stDecoration"]',
-            'button[data-testid="baseButton-headerNoPadding"]',
-            'button[data-testid="baseButton-header"]',
-            '[data-testid="collapsedControl"]',
-            '[data-testid="stSidebarCollapsedControl"]'
-        ];
-        sel.forEach(function(s){
-            document.querySelectorAll(s).forEach(function(el){ el.style.display='none'; el.style.height='0'; });
+    function fixUI(){
+        // 1. Remove black header bar
+        ['header[data-testid="stHeader"]',
+         '[data-testid="stToolbar"]',
+         '[data-testid="stDecoration"]',
+         '[data-testid="stStatusWidget"]'
+        ].forEach(function(s){
+            document.querySelectorAll(s).forEach(function(el){
+                el.style.cssText='display:none!important;height:0!important;overflow:hidden!important';
+            });
+        });
+
+        // 2. If sidebar is collapsed, auto-click the open button
+        var sidebar = document.querySelector('section[data-testid="stSidebar"]');
+        if(sidebar && (sidebar.getAttribute('aria-expanded')==='false' || getComputedStyle(sidebar).width==='0px')){
+            var openBtn = document.querySelector('[data-testid="stSidebarCollapsedControl"] button, [data-testid="collapsedControl"] button');
+            if(openBtn){ openBtn.click(); return; }
+        }
+
+        // 3. Replace "keyboard_double_arrow_left" text with << inside sidebar
+        document.querySelectorAll('section[data-testid="stSidebar"] button span, section[data-testid="stSidebar"] button p').forEach(function(sp){
+            if(sp.innerText && sp.innerText.trim().startsWith('keyboard')){
+                sp.innerText = '<<';
+                sp.style.cssText='font-family:monospace!important;font-size:14px!important;font-weight:900!important;color:#c8f088!important;letter-spacing:-2px!important;line-height:1!important';
+            }
+        });
+
+        // 4. Replace "keyboard_double_arrow_right" text with >> outside sidebar (collapsed control)
+        document.querySelectorAll('[data-testid="stSidebarCollapsedControl"] button span, [data-testid="collapsedControl"] button span').forEach(function(sp){
+            if(sp.innerText && sp.innerText.trim().startsWith('keyboard')){
+                sp.innerText = '>>';
+                sp.style.cssText='font-family:monospace!important;font-size:14px!important;font-weight:900!important;color:#ffffff!important;letter-spacing:-2px!important;line-height:1!important';
+            }
+        });
+
+        // 5. Style the << button inside sidebar
+        document.querySelectorAll('section[data-testid="stSidebar"] button[data-testid="baseButton-headerNoPadding"], section[data-testid="stSidebar"] button[data-testid="baseButton-header"]').forEach(function(btn){
+            btn.style.cssText='background:rgba(255,255,255,0.15)!important;border:1px solid rgba(200,240,130,0.5)!important;border-radius:8px!important;padding:2px 8px!important;cursor:pointer!important;min-width:36px!important;';
+        });
+
+        // 6. Style the >> button outside sidebar
+        document.querySelectorAll('[data-testid="stSidebarCollapsedControl"] button, [data-testid="collapsedControl"] button').forEach(function(btn){
+            btn.style.cssText='background:#2a5a1e!important;border:1px solid #5aaa30!important;border-radius:8px!important;padding:2px 8px!important;cursor:pointer!important;min-width:36px!important;box-shadow:0 2px 8px rgba(42,90,30,0.4)!important;';
         });
     }
-    nuke();
-    new MutationObserver(nuke).observe(document.body,{childList:true,subtree:true});
-    [200,500,1000,2000].forEach(function(t){ setTimeout(nuke,t); });
+
+    fixUI();
+    new MutationObserver(fixUI).observe(document.body, {childList:true, subtree:true, characterData:true});
+    [100,300,700,1200,2500,5000].forEach(function(t){ setTimeout(fixUI,t); });
 })();
 </script>
 """, unsafe_allow_html=True)
@@ -385,34 +417,13 @@ st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* ── Kill keyboard_double_arrow button + all text inside it ── */
-button[data-testid="baseButton-headerNoPadding"],
-button[data-testid="baseButton-header"],
-[data-testid="collapsedControl"],
-button[kind="header"],
-.st-emotion-cache-dvne4q,
-.st-emotion-cache-1rtdyuf,
-.st-emotion-cache-1mi2oo5,
-.st-emotion-cache-pkbazv,
-[aria-label="Close sidebar"],
-[aria-label="Open sidebar"],
-[data-testid="stSidebarCollapsedControl"],
-div[data-testid="stSidebarCollapsedControl"],
+/* ── Remove black top header bar ── */
 header[data-testid="stHeader"],
-header {{ display:none !important; visibility:hidden !important; height:0 !important; overflow:hidden !important; }}
-
-/* ── Remove the black top toolbar entirely ── */
-.stApp > header,
 div[data-testid="stToolbar"],
 div[data-testid="stDecoration"],
-div[data-testid="stStatusWidget"],
-#stDecoration,
-.reportview-container .main .block-container .stToolbar,
-[data-testid="stAppViewBlockContainer"] > div:first-child {{ display:none !important; height:0 !important; }}
-
-/* Force icon font NOT to render as text — hide the element's text content */
-button[data-testid="baseButton-headerNoPadding"]::before,
-button[data-testid="baseButton-headerNoPadding"]::after {{ content:'' !important; }}
+div[data-testid="stStatusWidget"] {{
+    display:none !important; height:0 !important; overflow:hidden !important;
+}}
 
 html,body,.stApp {{ background:{BG} !important; font-family:'Inter',sans-serif; }}
 .block-container {{ padding:0 2rem 4rem !important; max-width:1380px !important; margin-top:0 !important; }}
